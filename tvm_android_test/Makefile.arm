@@ -1,0 +1,47 @@
+NDK_ROOT=/home/sky/data/android-ndk-r19c-linux-x86_64/android-ndk-r19c
+CXX := $(NDK_ROOT)/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++
+LD := $(NDK_ROOT)/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++
+GCC_TOOLS := $(NDK_ROOT)/toolchains/llvm/prebuilt/linux-x86_64
+SYSROOT := $(NDK_ROOT)/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+TARGETABI=armv7-none-linux-androideabi21
+
+INCLUDE_DIRS := install/include dmlc/include
+LIB_DIRS := install/lib dmlc/lib
+
+COMMON_FLAGS += --target=$(TARGETABI) --gcc-toolchain=$(GCC_TOOLS) --sysroot=$(SYSROOT)
+
+CXX_FLAGS := -DANDROID 
+CXX_FLAGS += $(foreach includedir,$(INCLUDE_DIRS),-I$(includedir))
+CXX_FLAGS += -std=gnu++11 -mfpu=vfpv3-d16 -mfloat-abi=softfp -fno-addrsig -mfpu=neon -march=armv7-a -stdlib=libc++ -O2 -fPIC -fPIE -fdata-sections \
+						 -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes  \
+						 -mthumb -Wa,--noexecstack -Wformat -Werror=format-security  \
+						 -frtti -fexceptions -fvisibility-inlines-hidden \
+             -Wextra -Qunused-arguments -fcolor-diagnostics -fno-math-errno -fno-trapping-math -Oz 
+
+NO_WARNING := -Wno-deprecated -Wno-narrowing  -Wno-missing-field-initializers -Wno-type-limits -Wno-array-bounds -Wno-unknown-pragmas -Wno-sign-compare -Wno-unused-parameter \
+							-Wno-unused-variable -Wno-unused-function -Wno-unused-result -Wno-strict-overflow -Wno-strict-aliasing -Wno-error=deprecated-declarations -Wno-error=pedantic \
+							-Wno-error=redundant-decls -Wno-error=old-style-cast -Wno-invalid-partial-specialization -Wno-typedef-redefinition -Wno-unknown-warning-option \
+							-Wno-unused-private-field -Wno-inconsistent-missing-override -Wno-aligned-allocation-unavailable -Wno-c++14-extensions -Wno-constexpr-not-const -Wno-missing-braces \
+							-Wno-unused-but-set-variable -Wno-maybe-uninitialized -Wno-unused-parameter -Wno-missing-field-initializers -Wno-write-strings -Wno-unknown-pragmas -Wno-missing-braces
+
+LD_FLAGS += -DANDROID -mfpu=vfpv3-d16 -mfloat-abi=softfp -fno-addrsig -march=armv7-a -mthumb -mfpu=neon -O2 -fPIC -fdata-sections -ffunction-sections  \
+						-Wa,--noexecstack -Wformat -Werror=format-security -stdlib=libc++ -frtti -fexceptions -fvisibility-inlines-hidden -rdynamic \
+						-Wextra -Qunused-arguments -fcolor-diagnostics -fno-math-errno -fno-trapping-math -Oz -funwind-tables -fstack-protector-strong -no-canonical-prefixes\
+						-Wl,--exclude-libs,libgcc.a -Wl,--exclude-libs,libatomic.a -static-libstdc++ -Wl,--build-id -Wl,--warn-shared-textrel -Wl,--fatal-warnings -Wl,--exclude-libs,libunwind.a \
+						-Wl,--no-undefined -Qunused-arguments -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now -Wl,--gc-sections
+						
+
+LINK_LIBS := tvm_runtime dmlc omp opencv_highgui opencv_imgcodecs opencv_imgproc opencv_core IlmImf libjpeg  libtiff  libjasper libpng libwebp  zlib log stdc++
+LD_FLAGS += $(foreach libdir,$(LIB_DIRS),-L$(libdir)) $(foreach library,$(LINK_LIBS),-l$(library))
+LD_FLAGS += -llog -ldl -lm -latomic -lm 
+
+TARGETS := tvm_test
+SRCS = main.cpp
+OBJS = main.o
+
+$(TARGETS):$(OBJS)
+	$(LD) $(COMMON_FLAGS) $(LD_FLAGS) -s $(OBJS) -o $(TARGETS)
+
+$(OBJS):$(SRCS)
+	$(CXX) $(COMMON_FLAGS) $(CXX_FLAGS) $(NO_WARNING) -o $(OBJS) -c $(SRCS)
+
